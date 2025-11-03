@@ -1,0 +1,129 @@
+:root{
+      --bg1: #0f2027;
+      --bg2: #203a43;
+      --bg3: #2c5364;
+      --accent: #00d9ff;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(135deg, var(--bg1), var(--bg2), var(--bg3));
+      color:#fff;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:flex-start;
+      padding:40px 20px;
+    }
+
+    h1{
+      color:var(--accent);
+      margin:0 0 30px 0;
+      letter-spacing:1px;
+      font-size:1.9rem;
+      text-transform:uppercase;
+    }
+
+    .grid{
+      width:100%;
+      max-width:1000px;
+      display:grid;
+      gap:22px;
+      grid-template-columns: repeat(auto-fit,minmax(200px,1fr));
+    }
+
+    .card{
+      position:relative;
+      background: rgba(255,255,255,0.06);
+      backdrop-filter: blur(6px);
+      border-radius:16px;
+      padding:22px;
+      text-align:center;
+      cursor:pointer;
+      transition: transform .18s ease, box-shadow .18s ease;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+      border: 1px solid rgba(255,255,255,0.04);
+      overflow:visible;
+    }
+
+    .card:hover{
+      transform: translateY(-6px);
+    }
+
+    .card h2{
+      margin:10px 0 6px 0;
+      color:var(--accent);
+      font-size:1.2rem;
+    }
+    .card p{ margin:0; color:#d0d6da; font-size:0.9rem }
+
+    /* Danger badge */
+    .badge {
+  position: absolute;           /* absolute inside card */
+  top: 40%;                     /* center vertically */
+  left: 25%;                    /* center horizontally */
+  transform: translate(-50%, -50%); /* shift to exact center */
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  background: rgba(255,59,48,0.85);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(255,59,48,0.9), 0 0 20px rgba(255,59,48,0.45);
+  animation: pulse 1.2s infinite ease-in-out;
+  pointer-events: none;         /* so clicking the card still works */
+  z-index: 2;
+}
+
+.badge .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 8px #fff, 0 0 16px #fff;
+  animation: pulse 1.2s infinite ease-in-out;
+}
+
+@keyframes pulse{
+  0%{ transform: scale(1); opacity:1; }
+  50%{ transform: scale(1.5); opacity:0.6; }
+  100%{ transform: scale(1); opacity:1; }
+}
+
+
+    /* danger card glow */
+    .card.danger{
+      border-color: rgba(255,59,48,0.6);
+      box-shadow: 0 10px 30px rgba(255,59,48,0.12), 0 0 40px rgba(255,59,48,0.06) inset;
+      transform: translateY(-4px) scale(1.02);
+    }
+
+    /* subtle "Online/Offline" pills */
+    .status-pill{
+      margin-top:12px;
+      display:inline-block;
+      padding:6px 10px;
+      border-radius:999px;
+      background: rgba(0,0,0,0.18);
+      color:#d7e6ee;
+      font-size:0.78rem;
+      border:1px solid rgba(255,255,255,0.03);
+    }
+
+    footer{
+      margin-top:30px;
+      color:#bfcbd0;
+      font-size:0.85rem;
+      text-align:center;
+    }
+
+    /* Small responsive fix */
+    @media (max-width:420px){
+      .card{ padding:18px }
+      h1{ font-size:1.4rem }
+    }

@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Soldier Health – Live Dashboard</title>
+
+<!-- Leaflet (map) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+<!-- Chart.js (charts) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<style>
+  :root{
+    --bg:#0f1117; --card:#151823; --line:#262b3a; --fg:#e6e6e6; --muted:#9aa0b4; --good:#22c55e; --warn:#f59e0b; --bad:#ef4444; --accent:#60a5fa;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--fg); font:14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif}
+  header{padding:16px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  header h1{margin:0; font-size:18px; letter-spacing:.3px}
+  header .meta{color:var(--muted); font-size:13px}
+  .container{padding:20px; max-width:1200px; margin:0 auto}
+  .grid{display:grid; gap:16px}
+  .grid.kpi{grid-template-columns:repeat(auto-fit, minmax(160px,1fr))}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px}
+  .kpi .card h3{margin:0; font-size:12px; color:var(--muted); font-weight:600}
+  .kpi .val{margin-top:6px; font-size:22px; font-weight:700}
+  .pill{display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:999px; border:1px solid var(--line); color:var(--muted); font-size:12px}
+  .row{display:grid; gap:16px; grid-template-columns: 1.2fr .8fr}
+  #map{height:340px; border-radius:12px}
+  .controls{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  button, select{background:#1a2030; color:var(--fg); border:1px solid var(--line); border-radius:10px; padding:8px 10px; font:inherit; cursor:pointer}
+  button:hover{border-color:#3a4157}
+  .muted{color:var(--muted)}
+  footer{padding:14px 20px; border-top:1px solid var(--line); color:var(--muted); font-size:12px; text-align:center}
+  a{color:var(--accent); text-decoration:none}
+  a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<header>
+  <h1>Soldier Health – Live Dashboard</h1>
+  <span class="pill" id="statusPill">Status: <strong id="statusTxt">Connecting…</strong></span>
+  <span class="meta" id="updatedMeta">Updated: —</span>
+  <div class="controls" style="margin-left:auto">
+    <label class="muted">Profile:
+      <select id="profileSel">
+        <option value="0" selected>Soldier 1</option>
+        <option value="1">Soldier 2</option>
+        <option value="2">Soldier 3</option>
+      </select>
+    </label>
+    <label class="muted">History:
+      <select id="historySel">
+        <option value="30">Last 30</option>
+        <option value="60" selected>Last 60</option>
+        <option value="120">Last 120</option>
+        <option value="300">Last 300</option>
+      </select>
+    </label>
+    <button id="refreshBtn">Refresh</button>
+    <button id="autoBtn">Auto: ON</button>
+  </div>
+</header>
+
+<div class="container">
+  <!-- KPI CARDS -->
+  <div class="grid kpi">
+    <div class="card"><h3>Body/Env Temp (°C)</h3><div class="val" id="tempVal">—</div></div>
+    <div class="card"><h3>Humidity (%)</h3><div class="val" id="humVal">—</div></div>
+    <div class="card"><h3>Pressure (hPa)</h3><div class="val" id="pressVal">—</div></div>
+    <div class="card"><h3>Heart Rate (BPM)</h3><div class="val" id="bpmVal">—</div></div>
+    <div class="card"><h3>Altitude (m)</h3><div class="val" id="altVal">—</div></div>
+    <div class="card"><h3>BMP Temp (°C)</h3><div class="val" id="bmpVal">—</div></div>
+    <div class="card"><h3>Lat</h3><div class="val" id="latVal">—</div></div>
+    <div class="card"><h3>Lng</h3><div class="val" id="lngVal">—</div></div>
+  </div>
+
+  <div class="row" style="margin-top:16px">
+    <!-- CHARTS -->
+    <div class="grid">
+      <div class="card" style="height:250px;">
+        <h3 style="margin:0 0 8px 0">Heart Rate (BPM)</h3>
+        <canvas id="bpmChart" height="220"></canvas>
+      </div>
+      <div class="card" style="height:250px;">
+        <h3 style="margin:0 0 8px 0">Temperature & Humidity</h3>
+        <canvas id="thChart" height="220"></canvas>
+      </div>
+      <div class="card" style="height:250px;">
+        <h3 style="margin:0 0 8px 0">Pressure (hPa)</h3>
+        <canvas id="pChart" height="220"></canvas>
+      </div>
+    </div>
+
+    <!-- MAP -->
+    <div class="card">
+      <h3 style="margin:0 0 8px 0">Location</h3>
+      <div id="map"></div>
+      <div class="muted" style="margin-top:8px">* Shows the last reported coordinate from ThingSpeak.</div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Built for quick demos and viva – reads JSON from ThingSpeak. Keep device update ≥ 15s to respect ThingSpeak limits.
+</footer>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ====================== CONFIG ====================== */
+const profiles = [
+  { name: "Soldier 1", channelId: 3057443, readKey: "" },
+  { name: "Soldier 2", channelId: 123456, readKey: "your_read_key_here" }, // example profile
+  { name: "Soldier 3", channelId: 789012, readKey: "" } // example profile
+];
+
+let CHANNEL_ID   = profiles[0].channelId; // default to first profile
+let READ_API_KEY = profiles[0].readKey;
+
+// Get soldier from URL parameter
+const urlParams = new URLSearchParams(window.location.search);
+const soldierIndex = urlParams.get('soldier') ? parseInt(urlParams.get('soldier')) : 0;
+if (soldierIndex >= 0 && soldierIndex < profiles.length) {
+  CHANNEL_ID = profiles[soldierIndex].channelId;
+  READ_API_KEY = profiles[soldierIndex].readKey;
+  profileSel.value = soldierIndex;
+}
+
+const DEFAULT_RESULTS = 60;            // how many points to plot by default
+const AUTO_REFRESH_MS = 20000;         // ThingSpeak minimum is 15s; we use 20s
+/* ==================================================== */
+
+const statusTxt = document.getElementById("statusTxt");
+const updatedMeta = document.getElementById("updatedMeta");
+const historySel = document.getElementById("historySel");
+const refreshBtn = document.getElementById("refreshBtn");
+const autoBtn = document.getElementById("autoBtn");
+const profileSel = document.getElementById("profileSel");
+
+const vals = {
+  temp: document.getElementById("tempVal"),
+  hum: document.getElementById("humVal"),
+  press: document.getElementById("pressVal"),
+  bpm: document.getElementById("bpmVal"),
+  alt: document.getElementById("altVal"),
+  bmp: document.getElementById("bmpVal"),
+  lat: document.getElementById("latVal"),
+  lng: document.getElementById("lngVal"),
+};
+
+// Map init
+const map = L.map('map', { zoomControl: true });
+const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+let marker = null;
+map.setView([20, 78], 4); // default view (India)
+
+// Charts
+let bpmChart, thChart, pChart;
+
+function mkLineConfig(label, data, tension=0.3){
+  return {
+    type: 'line',
+    data: data,
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { grid: { color: '#23283a' }, ticks: { color: '#a5adcb' } },
+        y: { grid: { color: '#23283a' }, ticks: { color: '#a5adcb' } }
+      },
+      plugins: {
+        legend: { labels: { color: '#c7cbe0' } },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      elements: { line: { tension }, point: { radius: 0 } }
+    }
+  };
+}
+
+function initCharts(){
+  const bpmCtx = document.getElementById('bpmChart').getContext('2d');
+  const thCtx  = document.getElementById('thChart').getContext('2d');
+  const pCtx   = document.getElementById('pChart').getContext('2d');
+
+  bpmChart = new Chart(bpmCtx, mkLineConfig("BPM", {
+    labels: [], datasets: [{ label: 'BPM', data: [], borderColor: '#60a5fa' }]
+  }));
+
+  thChart = new Chart(thCtx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        { label: 'Temp (°C)', data: [], borderColor: '#22c55e', tension: 0.3 },
+        { label: 'Humidity (%)', data: [], borderColor: '#f59e0b', tension: 0.3 }
+      ]
+    },
+    options: mkLineConfig("",{}).options
+  });
+
+  pChart = new Chart(pCtx, mkLineConfig("Pressure (hPa)", {
+    labels: [], datasets: [{ label: 'Pressure (hPa)', data: [], borderColor: '#a78bfa' }]
+  }));
+}
+
+function tsUrl(results){
+  const base = `https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds.json`;
+  const q = new URLSearchParams({ results: String(results) });
+  if (READ_API_KEY) q.append('api_key', READ_API_KEY);
+  return `${base}?${q.toString()}`;
+}
+
+async function fetchData(results){
+  statusTxt.textContent = 'Fetching…';
+  const u = tsUrl(results);
+  const r = await fetch(u, { cache: 'no-store' });
+  if(!r.ok) throw new Error(`ThingSpeak HTTP ${r.status}`);
+  const j = await r.json();
+  if(!j || !j.feeds || !j.channel) throw new Error('Malformed ThingSpeak JSON');
+  return j;
+}
+
+function asNum(v, dp=2){
+  const n = Number(v);
+  if (!isFinite(n)) return null;
+  return Number(n.toFixed(dp));
+}
+
+function updateUI(j){
+  const feeds = j.feeds;
+  if(!feeds.length) throw new Error('No data yet.');
+
+  // latest record
+  const f = feeds[feeds.length-1];
+  const t = asNum(f.field1,1);
+  const h = asNum(f.field2,0);
+  const pPa = asNum(f.field3,0);
+  const bpm = asNum(f.field4,0);
+  const lat = asNum(f.field5,6);
+  const lng = asNum(f.field6,6);
+  const bt  = asNum(f.field7,1);
+  const alt = asNum(f.field8,1);
+
+  vals.temp.textContent  = (t ?? '—');
+  vals.hum.textContent   = (h ?? '—');
+  vals.press.textContent = (pPa!=null ? (pPa/100).toFixed(1) : '—'); // Pa -> hPa
+  vals.bpm.textContent   = (bpm ?? '—');
+  vals.alt.textContent   = (alt ?? '—');
+  vals.bmp.textContent   = (bt ?? '—');
+  vals.lat.textContent   = (lat ?? '—');
+  vals.lng.textContent   = (lng ?? '—');
+
+  // status & updated
+  const ts = new Date(f.created_at);
+  updatedMeta.textContent = `Updated: ${ts.toLocaleString()}`;
+  statusTxt.textContent = 'OK';
+
+  // Map
+  if(lat != null && lng != null && lat !== 0 && lng !== 0){
+    if(!marker){
+      marker = L.marker([lat, lng]).addTo(map).bindPopup('Last known location');
+    }else{
+      marker.setLatLng([lat, lng]);
+    }
+    map.setView([lat, lng], 15);
+  }
+
+  // Charts data
+  const labels = feeds.map(x => {
+    const d = new Date(x.created_at);
+    return d.toLocaleTimeString();
+  });
+
+  const bpmArr = feeds.map(x => asNum(x.field4,0));
+  const tempArr= feeds.map(x => asNum(x.field1,1));
+  const humArr = feeds.map(x => asNum(x.field2,0));
+  const pArr   = feeds.map(x => {
+    const v = asNum(x.field3,0);
+    return v!=null ? Number((v/100).toFixed(1)) : null; // Pa->hPa
+  });
+
+  // Filter nulls for charts
+  function nonNull(arr){ return arr.map(v => v==null ? null : v); }
+
+  bpmChart.data.labels = labels;
+  bpmChart.data.datasets[0].data = nonNull(bpmArr);
+  bpmChart.update('none');
+
+  thChart.data.labels = labels;
+  thChart.data.datasets[0].data = nonNull(tempArr);
+  thChart.data.datasets[1].data = nonNull(humArr);
+  thChart.update('none');
+
+  pChart.data.labels = labels;
+  pChart.data.datasets[0].data = nonNull(pArr);
+  pChart.update('none');
+}
+
+let timer = null;
+function setAuto(on){
+  if(on){
+    if(timer) clearInterval(timer);
+    timer = setInterval(()=>reload(), AUTO_REFRESH_MS);
+    autoBtn.textContent = 'Auto: ON';
+  }else{
+    if(timer) clearInterval(timer);
+    timer = null;
+    autoBtn.textContent = 'Auto: OFF';
+  }
+}
+
+async function reload(){
+  try{
+    const n = Number(historySel.value || DEFAULT_RESULTS);
+    const j = await fetchData(n || DEFAULT_RESULTS);
+    updateUI(j);
+  }catch(err){
+    statusTxt.textContent = 'Error';
+    console.error(err);
+  }
+}
+
+refreshBtn.addEventListener('click', reload);
+autoBtn.addEventListener('click', ()=> setAuto(!timer));
+historySel.addEventListener('change', reload);
+profileSel.addEventListener('change', ()=>{
+  const idx = Number(profileSel.value);
+  CHANNEL_ID = profiles[idx].channelId;
+  READ_API_KEY = profiles[idx].readKey;
+  reload();
+});
+
+// Init
+initCharts();
+setAuto(true);
+reload();
+</script>
+</body>
+</html>

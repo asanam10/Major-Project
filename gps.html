@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Live GPS Tracker</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY"></script>
+  <style>#map{height:500px;width:100%;}</style>
+</head>
+<body>
+<h2>Live GPS Tracker</h2>
+<div id="map"></div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "FqsrP3B1OjeflGwHghaavNBcmxYPZwaK9ybbDPrc",
+  databaseURL: "https://console.firebase.google.com/u/0/project/gps-tracker-509a6/database/gps-tracker-509a6-default-rtdb/data/~2F"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let map = new google.maps.Map(document.getElementById('map'), {
+  zoom: 15,
+  center: {lat: 20, lng: 78}
+});
+
+let marker = new google.maps.Marker({
+  map: map,
+  position: {lat: 20, lng: 78}
+});
+
+db.ref('/gps').on('value', snapshot => {
+  const data = snapshot.val();
+  if(data && data.lat && data.lon){
+    const pos = {lat: data.lat, lng: data.lon};
+    marker.setPosition(pos);
+    map.setCenter(pos);
+  }
+});
+</script>
+</body>
+</html>

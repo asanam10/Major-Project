@@ -1,0 +1,110 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Soldier Dashboard Selection</title>
+  <link rel="stylesheet" href="stylefr.css">
+    
+</head>
+<body>
+  <h1>Soldier Monitoring System</h1>
+
+  <div class="grid" id="soldierGrid" role="list">
+    <div class="card" role="listitem" tabindex="0" data-id="1" onclick="goToDashboard('dashb1.html?soldier=0')" onkeydown="cardKey(event,1)">
+      <h2>Soldier 1</h2>
+      <p>Click to view live stats</p>
+      <div class="status-pill" aria-hidden="true">Online</div>
+    </div>
+
+    <div class="card danger" role="listitem" tabindex="0" data-id="2" id="soldier-2" onclick="goToDashboard('dashb2.html?soldier=1')" onkeydown="cardKey(event,2)" aria-live="polite" aria-atomic="true">
+      <!-- Danger badge added -->
+      <div class="badge" id="badge-2" aria-hidden="false" title="Danger - Immediate attention">
+        <span class="dot" aria-hidden="true"></span>
+        <span>⚠️ DANGER</span>
+      </div>
+
+      <h2>Soldier 2</h2>
+      <p>Click to view live stats</p>
+      <div class="status-pill">IN DANGER</div>
+    </div>
+
+    <div class="card" role="listitem" tabindex="0" data-id="3" onclick="goToDashboard('dashb3.html?soldier=2')" onkeydown="cardKey(event,3)">
+      <h2>Soldier 3</h2>
+      <p>Click to view live stats</p>
+      <div class="status-pill">Online</div>
+    </div>
+
+    <div class="card" role="listitem" tabindex="0" data-id="4" onclick="goToDashboard('dashb4.html?soldier=2')" onkeydown="cardKey(event,3)">
+      <h2>Soldier 4</h2>
+      <p>Click to view live stats</p>
+      <div class="status-pill">Online</div>
+    </div>
+
+    <div class="card" role="listitem" tabindex="0" data-id="5" onclick="goToDashboard('dashb5.html?soldier=2')" onkeydown="cardKey(event,3)">
+      <h2>Soldier 5</h2>
+      <p>Click to view live stats</p>
+      <div class="status-pill">Online</div>
+    </div>
+  </div>
+
+  <footer>Developed by Team Alpha ⚔️ &nbsp; · &nbsp; Alert shown for Soldier 2</footer>
+
+  <script>
+    /* Function: navigate to dashboard */
+    function goToDashboard(page){
+      // if you want to open in new tab: window.open(page, '_blank')
+      window.location.href = page;
+    }
+
+    // allow Enter/Space to activate a card (keyboard accessibility)
+    function cardKey(e, id){
+      if(e.key === 'Enter' || e.key === ' '){
+        e.preventDefault();
+        const page = `main.html?soldier=${id-1}`;
+        goToDashboard(page);
+      }
+    }
+
+    /* Dynamic status control:
+       You can update the statuses object from your backend via fetch/WebSocket.
+       For now we preset soldier 2 as 'danger'. */
+    const statuses = {
+      1: { state: 'online', danger: false },
+      2: { state: 'in_danger', danger: true },
+      3: { state: 'online', danger: false },
+      4: { state: 'online', danger: false },
+      5: { state: 'online', danger: false },
+    };
+
+    function applyStatuses(){
+      Object.keys(statuses).forEach(key=>{
+        const id = Number(key);
+        const card = document.querySelector(`.card[data-id="${id}"]`);
+        const badge = document.getElementById(`badge-${id}`);
+        if(!card) return;
+
+        if(statuses[id].danger){
+          card.classList.add('danger');
+          if(badge) badge.style.display = 'inline-flex';
+          // update aria to notify screen readers
+          card.setAttribute('aria-label', `Soldier ${id} — in danger. Click to open dashboard.`);
+        } else {
+          card.classList.remove('danger');
+          if(badge) badge.style.display = 'none';
+          card.setAttribute('aria-label', `Soldier ${id} — online. Click to open dashboard.`);
+        }
+      });
+    }
+
+    // apply initial statuses on load
+    applyStatuses();
+
+    /* Example: if later you get an update from server you can call:
+       statuses[2].danger = false; applyStatuses();
+       or to set danger: statuses[4].danger = true; applyStatuses();
+       In production you would update statuses based on realtime data */
+  </script>
+</body>
+</html>
