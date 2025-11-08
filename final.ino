@@ -1,4 +1,4 @@
-//*#include <Wire.h>
+// #include <Wire.h>
 // #include "DHT.h"
 // #include <TinyGPSPlus.h>
 // #include <Adafruit_BMP085.h>
@@ -24,7 +24,7 @@
 // const int BPM_HIGH = 120;
 // const int BPM_LOW  = 50;
 
-// const char PHONE_NUMBER[] = "+911234567890";  // Replace with your number
+// const char PHONE_NUMBER[] = "+919663947098";  // Replace with your number
 
 // // ---------------- WIFI + THINGSPEAK CONFIG ----------------
 // const char* ssid = "Nagaraj Jio";           // 🔹 Replace with your WiFi SSID
@@ -203,6 +203,6 @@
 //       Serial.println("❌ ThingSpeak Update Failed, HTTP error code: " + String(status));
 //     }
 
-    Serial.println("--------------------------");
-  }
-}
+//     Serial.println("--------------------------");
+//   }
+// }
